@@ -1,0 +1,12 @@
+---
+# Example cron-based rollout schedules
+# Each entry binds to a rollout by name via the CLI once configured
+schedules:
+  - name: "pilot_midnight"
+    rollout: "pilot-rollout"
+    cron: "0 0 * * *"
+    enabled: false
+  - name: "general_offpeak"
+    rollout: "general-rollout"
+    cron: "0 2 * * *"
+    enabled: false

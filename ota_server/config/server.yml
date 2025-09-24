@@ -1,0 +1,17 @@
+server:
+  host: 0.0.0.0
+  port: 8443
+  api_token: "change-me"
+  cert_file: "certs/server.crt"
+  key_file: "certs/server.key"
+  storage_root: "firmware_store"
+  manifest_ttl_seconds: 300
+  poll_interval_minutes: 10
+  max_firmware_size_kb: 3900
+scheduler:
+  timezone: "UTC"
+  schedules_file: "config/schedules.yaml"
+database:
+  url: "sqlite:///./ota.db"
+logging:
+  level: "INFO"
