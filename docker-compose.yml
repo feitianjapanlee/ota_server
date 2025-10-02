@@ -1,0 +1,15 @@
+services:
+  ota-server:
+    build: .
+    image: ota-server:latest
+    container_name: ota-server
+    environment:
+      OTA_CONFIG: /app/ota_server/config/server.yml
+    ports:
+      - "8443:8443"
+    volumes:
+      - ./ota_server/config:/app/ota_server/config:ro
+      - ./ota_server/certs:/app/ota_server/certs:ro
+      - ./ota_server/firmware_store:/app/ota_server/firmware_store
+      - ./ota_server/ota.db:/app/ota_server/ota.db
+    restart: unless-stopped

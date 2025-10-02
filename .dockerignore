@@ -1,0 +1,15 @@
+__pycache__
+*.py[cod]
+*.log
+.venv
+venv
+.env
+pytest_cache
+.cache
+.mypy_cache
+.DS_Store
+
+# Host data directories kept outside images
+ota_server/ota.db
+ota_server/firmware_store
+ota_server/downloads

@@ -33,6 +33,29 @@ This directory contains the Python OTA backend, management utilities, simulator 
        --ssl-keyfile certs/server.key --ssl-certfile certs/server.crt
    ```
 
+## Docker Deployment
+
+Container builds ship only the application code; the SQLite database, firmware binaries, and certificates stay on the host via bind mounts.
+
+1. **Generate host certificates (if absent)**
+   ```bash
+   ./ota_server/scripts/generate_cert.sh ota_server/certs
+   ```
+2. **Build the image**
+   ```bash
+   docker compose build
+   ```
+3. **Initialise the database (idempotent)**
+   ```bash
+   docker compose run --rm ota-server python ota_server/manage.py initdb
+   ```
+4. **Start the HTTPS server**
+   ```bash
+   docker compose up -d
+   ```
+
+The compose file maps `ota_server/ota.db`, `ota_server/firmware_store`, `ota_server/certs`, and `ota_server/config` into the container so that uploads, rollouts, and configuration changes persist on the host. Use `docker compose run --rm ota-server python ota_server/manage.py <command>` for other management tasks.
+
 ## Configuration
 
 Runtime settings live in `ota_server/config/server.yml`. Update the API token, certificate paths, storage directory, and database URL before running in production. Cron-based rollouts are defined in `ota_server/config/schedules.yaml`; sync them into the database with `python manage.py scheduler-sync`.
@@ -63,4 +86,4 @@ The Arduino sketch in `firmware/esp32_ota_client.ino` implements the polling, do
 
 - Integrate with your continuous delivery pipeline to push signed binaries into `ota_server/firmware_store`.
 - Extend the CLI to gate general rollouts on pilot feedback or telemetry thresholds.
-- Containerise the server (e.g., Docker + Gunicorn) once validated locally.
+- Harden the Docker image for production (multi-stage build, non-root user, monitored health checks).
