@@ -1,16 +1,18 @@
 #include <WiFi.h>
+#include <WiFiClientSecure.h>
 #include <HTTPClient.h>
 #include <Update.h>
 #include <ArduinoJson.h>
 #include <algorithm>
 #include "mbedtls/md.h"
+#include "secrets.h"
 
 // ==== Device Configuration ==================================================='
 // TODO: Replace with your Wi-Fi credentials and OTA token before flashing.
-static const char *WIFI_SSID = "YOUR_WIFI_SSID";
-static const char *WIFI_PASSWORD = "YOUR_WIFI_PASSWORD";
-static const char *OTA_TOKEN = "change-me";
-static const char *OTA_BASE_URL = "https://192.168.1.10:8443";  // OTA server URL
+// static const char *WIFI_SSID = "YOUR_WIFI_SSID";
+// static const char *WIFI_PASSWORD = "YOUR_WIFI_PASSWORD";
+static const char *OTA_TOKEN = "myotatoken";
+static const char *OTA_BASE_URL = "https://192.168.0.55:8443";  // OTA server URL
 static const char *CURRENT_VERSION = "0.0.1";                     // Bumped after successful flash
 // Labels allow server-side grouping (e.g., pilot, canary). Separate multiple labels with commas.
 static const char *DEVICE_LABELS = "pilot";
@@ -19,7 +21,37 @@ static const char *DEVICE_LABELS = "pilot";
 // Copy the PEM contents (including BEGIN/END lines) into the string below.
 static const char OTA_CA_CERT[] PROGMEM = R"PEM(
 -----BEGIN CERTIFICATE-----
-... paste server certificate here ...
+MIIFpzCCA4+gAwIBAgIUU5jqNs+t+enoLpOeL/mrwwxWPCQwDQYJKoZIhvcNAQEL
+BQAwYzELMAkGA1UEBhMCSlAxDjAMBgNVBAgMBVRva3lvMREwDwYDVQQHDAhTaGlu
+anVrdTEPMA0GA1UECgwGS2VpaGluMQwwCgYDVQQLDANPVEExEjAQBgNVBAMMCWxv
+Y2FsaG9zdDAeFw0yNTEwMDExMDE5MzNaFw0yNjEwMDExMDE5MzNaMGMxCzAJBgNV
+BAYTAkpQMQ4wDAYDVQQIDAVUb2t5bzERMA8GA1UEBwwIU2hpbmp1a3UxDzANBgNV
+BAoMBktlaWhpbjEMMAoGA1UECwwDT1RBMRIwEAYDVQQDDAlsb2NhbGhvc3QwggIi
+MA0GCSqGSIb3DQEBAQUAA4ICDwAwggIKAoICAQCBxYxloy2O0uH1g36CIihn5ZBp
+6INs4aVCb/VsHhP9axaM/FAm+lDyFZsGgg5yxF7HNE0KZwup+YV4YuBu5EaQJTqw
+ARyi0EMh7yl4H6JhgSXVHal50nsBeT94QZRFGp39q6quxv9oXziFe8dg+/DKvAbc
+3nCmDhbOHEql4VSaxXKKKCxz4RurXWWC00ScMFgC14z6GPj/1ochv8E/eyvJrp13
+vG4MK3kBLX/KMx8CfPiwu15C7E8VHemp1q9e6kma4Uh1Jeqp1aBPh3ZsEs33vpQk
+oOn+52zAYN20WEtQvjbVl3QLekwoH4MHT5sj8LrSN5ol26A9g4Rw4m0XLf+QYi7g
+GteimMbd1ONzjfajCFueRL+DajIP3PvTjKEniWCW4UK4s25E1mEi/4kw50NknOuI
+R1V0cfBZRuYC1b+nj1njZtKTir/YZ5r2au/iL2f1+spBhRmoU12FtABuvKjKPyYk
+TtAzLifv3T2T7tgtXjvRq5Bz1zFf5r+2RToJEGr7mBmaikewXICl2UXtZoIOEoLd
+XBjvQ+ihaaMtB3TF6DM99N7vkD1/Z3T4GEPZukzQu9O2DpMB3fPQjqnFSQMAb2D4
+fW97fwW3e+u3Wsja8zfacOXnw58ZNeAp2dDW4drdMVn7I8U9LW3++fAz3We/He36
+x2aucahzvTj3Lrpu7wIDAQABo1MwUTAdBgNVHQ4EFgQUDZIyAbOSB/fJMdyzu6A5
+iMR6pAMwHwYDVR0jBBgwFoAUDZIyAbOSB/fJMdyzu6A5iMR6pAMwDwYDVR0TAQH/
+BAUwAwEB/zANBgkqhkiG9w0BAQsFAAOCAgEAU4Ri84oNKn5v9HnqU6xGeW9llCLk
+STH2WAOVf3T5aQSBStcX8b1VJ58MP/2821hwvvWb3prte4MagLm+Tkz6DbgJxqez
+7rEIKYrgzY522Mb4hMjMHUiN1c70ksDy9Ei3MwKEX14jeLIbKwbmSeOBa+CVWnTY
+iIIg/6vl03f6C6Cg5nDqpnuwGOd8FIiHZ8e9dkS/w692c5nEu5NnAsAoXJfB/7lG
+f0Pbs/D6TMcM1+2FfRI0dwXpRUhrXBMcIC2Kb21L0CXnMR9ZR9W9nQ2dHI5vxUxl
+lo4nu0Y/VPzNdP4RanAXxFtlfr36mVHfSy+EdM8nlrfpV9uehcdcovtgMf0eE9+1
+JijhJEULcHdmNeaUi+ST3xHLAyk3c2QjTwPfGC2iVekogsshGNCv0duWUYBLMb9T
+9S5YPvg95fHXbfnxcp4qvFwIXv2gn0kjIVKUjlQMX0ND5pJqIjZOUXF4Z8sWdzYQ
+0ha7Htkl2yPfGZw8nFamcfeYKFLXHa80JcMC9yXHPXlzq4cq1qGSqvaswc6ink+i
+xN/524bf3h4ltX/QMKUufo3c1K6SoRqfD6vjfLgULHcZs0Re52YewigclOXw5DCM
+Hpi2QjHtNZcq6HPQ1KTTiaiJLqm0ckp7aWjAzXydJxeRW2Fdz1c/k+2dakuI6NA7
+RTz5ayum3fjFGSU=
 -----END CERTIFICATE-----
 )PEM";
 
@@ -183,7 +215,8 @@ static bool applyFirmware(const String &url, const String &expectedSha, size_t e
   https.end();
 
   if (!Update.end()) {
-    Serial.printf("[OTA] Update end failed: %s\n", Update.errorString().c_str());
+    //Serial.printf("[OTA] Update end failed: %s\n", Update.errorString().c_str());
+    Serial.printf("[OTA] Update end failed: %s\n", Update.errorString());
     mbedtls_md_free(&ctx);
     return false;
   }
@@ -291,6 +324,7 @@ void setup()
 {
   Serial.begin(115200);
   delay(2000);
+  Serial.printf("[OTA] Client Ver %s started.\n", CURRENT_VERSION);
   connectWiFi();
   g_nextPollAt = millis();
 }

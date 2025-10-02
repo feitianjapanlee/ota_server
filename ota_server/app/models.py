@@ -100,7 +100,7 @@ class Rollout(Base):
     end_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     firmware: Mapped[Firmware] = relationship(Firmware, back_populates="rollouts")
     target_label: Mapped[Label | None] = relationship(Label, back_populates="rollouts")
-    schedule: Mapped["Schedule" | None] = relationship("Schedule", back_populates="rollout", uselist=False)
+    schedule: Mapped[Schedule | None] = relationship("Schedule", back_populates="rollout", uselist=False)
 
 
 class Schedule(Base):

@@ -1,7 +1,7 @@
 server:
   host: 0.0.0.0
   port: 8443
-  api_token: "change-me"
+  api_token: "myotatoken"
   cert_file: "certs/server.crt"
   key_file: "certs/server.key"
   storage_root: "firmware_store"
