@@ -46,6 +46,14 @@ class ReportStatusRequest(BaseModel):
     status: str = Field(pattern="^(success|failed)$")
     error: str | None = None
 
+    @field_validator("mac")
+    @classmethod
+    def normalize_mac(cls, value: str) -> str:
+        clean = value.replace(":", "").replace("-", "").lower()
+        if len(clean) != 12:
+            raise ValueError("MAC address must be 12 hexadecimal characters")
+        return clean
+
 
 class DeviceRead(BaseModel):
     mac: str

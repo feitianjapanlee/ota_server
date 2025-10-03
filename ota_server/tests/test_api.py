@@ -3,6 +3,7 @@ from __future__ import annotations
 import importlib
 import json
 import os
+import sys
 from pathlib import Path
 
 import pytest
@@ -52,6 +53,11 @@ def test_client(tmp_path, monkeypatch):
 
     app_config.get_config.cache_clear()
 
+    database_module = importlib.import_module("ota_server.app.database")
+    database_module.Base.metadata.clear()
+    if hasattr(database_module.Base, "registry"):
+        database_module.Base.registry.dispose()
+
     modules_to_reload = [
         "ota_server.app.config",
         "ota_server.app.database",
@@ -62,10 +68,8 @@ def test_client(tmp_path, monkeypatch):
     ]
     reloaded = {}
     for module_name in modules_to_reload:
-        if module_name in reloaded:
-            continue
-        module = importlib.import_module(module_name)
-        reloaded[module_name] = importlib.reload(module)
+        sys.modules.pop(module_name, None)
+        reloaded[module_name] = importlib.import_module(module_name)
 
     from ota_server.app import main as app_main
 
@@ -100,6 +104,16 @@ def test_check_update_no_rollout(test_client):
     payload = response.json()
     assert payload["update_available"] is False
     assert payload["manifest"] is None
+
+    from ota_server.app import models
+    from ota_server.app.database import session_scope
+
+    with session_scope() as session:
+        device = session.execute(
+            select(models.Device).where(models.Device.mac == "aabbccddeeff")
+        ).scalar_one_or_none()
+        assert device is not None
+        assert device.current_version == "0.9.0"
 
 
 def test_check_update_with_rollout_and_report(test_client, tmp_path):

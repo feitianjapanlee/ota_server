@@ -7,7 +7,7 @@ from . import models
 
 
 def build_manifest(request: Request, firmware: models.Firmware) -> Manifest:
-    download_url = request.url_for("download_firmware", version=firmware.version)
+    download_url = str(request.url_for("download_firmware", version=firmware.version))
     return Manifest(
         version=firmware.version,
         url=download_url,

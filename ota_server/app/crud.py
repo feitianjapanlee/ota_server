@@ -63,6 +63,7 @@ def register_or_update_device(
             device.labels.append(models.DeviceLabel(device=device, label=label))
     # remove labels not in provided list only if we have explicit set
     if labels:
+        session.flush()
         desired_ids = {label.id for label in labels}
         device.labels[:] = [
             dl for dl in device.labels if dl.label_id in desired_ids
