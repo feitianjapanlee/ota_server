@@ -15,6 +15,7 @@ This directory contains the Python OTA backend, management utilities, simulator 
    cd ota_server
    ./scripts/generate_cert.sh certs
    ```
+   The generated certificate includes subject alternative names for `localhost` and `127.0.0.1` so simulators and browsers accept it without hostname warnings.
 3. **Initialise the database**
    ```bash
    python manage.py initdb

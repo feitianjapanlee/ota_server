@@ -7,11 +7,38 @@ CERT_FILE="$CERT_DIR/server.crt"
 KEY_FILE="$CERT_DIR/server.key"
 
 if command -v openssl >/dev/null 2>&1; then
+  TMP_CFG="$(mktemp)"
+  trap 'rm -f "$TMP_CFG"' EXIT
+
+  cat >"$TMP_CFG" <<'EOF'
+[ req ]
+default_bits        = 4096
+prompt              = no
+default_md          = sha256
+distinguished_name  = dn
+x509_extensions     = san
+
+[ dn ]
+C  = JP
+ST = Tokyo
+L  = Shinjuku
+O  = Keihin
+OU = OTA
+CN = localhost
+
+[ san ]
+subjectAltName = @alt_names
+
+[ alt_names ]
+DNS.1 = localhost
+IP.1  = 127.0.0.1
+EOF
+
   openssl req -x509 -nodes -days 365 \
     -newkey rsa:4096 \
-    -subj "/C=JP/ST=Tokyo/L=Shinjuku/O=Keihin/OU=OTA/CN=localhost" \
     -keyout "$KEY_FILE" \
-    -out "$CERT_FILE"
+    -out "$CERT_FILE" \
+    -config "$TMP_CFG"
   echo "Generated certificate: $CERT_FILE"
   echo "Generated key        : $KEY_FILE"
 else
