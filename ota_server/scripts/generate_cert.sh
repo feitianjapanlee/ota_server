@@ -24,14 +24,13 @@ ST = Tokyo
 L  = Shinjuku
 O  = Keihin
 OU = OTA
-CN = localhost
+CN = otaserver.local
 
 [ san ]
 subjectAltName = @alt_names
 
 [ alt_names ]
-DNS.1 = localhost
-IP.1  = 127.0.0.1
+DNS.1 = otaserver.local
 EOF
 
   openssl req -x509 -nodes -days 365 \
