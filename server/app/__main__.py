@@ -8,7 +8,7 @@ from .config import get_config
 def main() -> None:
     config = get_config()
     uvicorn.run(
-        "ota_server.app.main:app",
+        "server.app.main:app",
         host=config.server.host,
         port=config.server.port,
         ssl_certfile=config.server.cert_file,

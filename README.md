@@ -12,7 +12,7 @@ This directory contains the Python OTA backend, management utilities, simulator 
    ```
 2. **Generate a self-signed certificate**
    ```bash
-   cd ota_server
+   cd server
    ./scripts/generate_cert.sh certs
    ```
    The generated certificate includes subject alternative names for `localhost` and `127.0.0.1` so simulators and browsers accept it without hostname warnings.
@@ -30,7 +30,8 @@ This directory contains the Python OTA backend, management utilities, simulator 
    ```
 6. **Run the server with HTTPS**
    ```bash
-   uvicorn ota_server.app.main:app --host 0.0.0.0 --port 8443 \
+   cd server
+   uvicorn app.main:app --host 0.0.0.0 --port 8443 \
        --ssl-keyfile certs/server.key --ssl-certfile certs/server.crt
    ```
 
@@ -40,7 +41,7 @@ Container builds ship only the application code; the SQLite database, firmware b
 
 1. **Generate host certificates (if absent)**
    ```bash
-   ./ota_server/scripts/generate_cert.sh ota_server/certs
+   ./server/scripts/generate_cert.sh server/certs
    ```
 2. **Build the image**
    ```bash
@@ -48,33 +49,33 @@ Container builds ship only the application code; the SQLite database, firmware b
    ```
 3. **Initialise the database (idempotent)**
    ```bash
-   docker compose run --rm ota-server python ota_server/manage.py initdb
+   docker compose run --rm ota-server python server/manage.py initdb
    ```
 4. **Start the HTTPS server**
    ```bash
    docker compose up -d
    ```
 
-The compose file maps `ota_server/ota.db`, `ota_server/firmware_store`, `ota_server/certs`, and `ota_server/config` into the container so that uploads, rollouts, and configuration changes persist on the host. Use `docker compose run --rm ota-server python ota_server/manage.py <command>` for other management tasks.
+The compose file maps `server/ota.db`, `server/firmware_store`, `server/certs`, and `server/config` into the container so that uploads, rollouts, and configuration changes persist on the host. Use `docker compose run --rm ota-server python server/manage.py <command>` for other management tasks.
 
 ## Configuration
 
-Runtime settings live in `ota_server/config/server.yml`. Update the API token, certificate paths, storage directory, and database URL before running in production. Cron-based rollouts are defined in `ota_server/config/schedules.yaml`; sync them into the database with `python manage.py scheduler-sync`.
+Runtime settings live in `server/config/server.yml`. Update the API token, certificate paths, storage directory, and database URL before running in production. Cron-based rollouts are defined in `server/config/schedules.yaml`; sync them into the database with `python manage.py scheduler-sync`.
 
 ## Device Simulator
 
 Use the fake device to verify the OTA workflow without hardware:
 ```bash
-python ota_server/tools/fake_device.py --base-url https://localhost:8443 \
+python server/tools/fake_device.py --base-url https://localhost:8443 \
     --mac aa:bb:cc:dd:ee:ff --version 0.9.0 --labels pilot \
-    --token <API_TOKEN> --cert certs/server.crt
+    --token <API_TOKEN> --cert server/certs/server.crt
 ```
 
 ## Tests
 
 Run the automated test suite from the repository root (with the virtual environment active):
 ```bash
-pytest ota_server/tests
+pytest server/tests
 ```
 
 The tests exercise the check-update and report-status endpoints, verifying that firmware manifests and download logs are persisted correctly.
@@ -85,6 +86,6 @@ The Arduino sketch in `firmware/esp32_ota_client.ino` implements the polling, do
 
 ## Next Steps
 
-- Integrate with your continuous delivery pipeline to push signed binaries into `ota_server/firmware_store`.
+- Integrate with your continuous delivery pipeline to push signed binaries into `server/firmware_store`.
 - Extend the CLI to gate general rollouts on pilot feedback or telemetry thresholds.
 - Harden the Docker image for production (multi-stage build, non-root user, monitored health checks).

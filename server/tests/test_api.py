@@ -49,29 +49,29 @@ def test_client(tmp_path, monkeypatch):
 
     monkeypatch.setenv("OTA_CONFIG", str(config_path))
 
-    from ota_server.app import config as app_config
+    from server.app import config as app_config
 
     app_config.get_config.cache_clear()
 
-    database_module = importlib.import_module("ota_server.app.database")
+    database_module = importlib.import_module("server.app.database")
     database_module.Base.metadata.clear()
     if hasattr(database_module.Base, "registry"):
         database_module.Base.registry.dispose()
 
     modules_to_reload = [
-        "ota_server.app.config",
-        "ota_server.app.database",
-        "ota_server.app.models",
-        "ota_server.app.crud",
-        "ota_server.app.scheduler",
-        "ota_server.app.main",
+        "server.app.config",
+        "server.app.database",
+        "server.app.models",
+        "server.app.crud",
+        "server.app.scheduler",
+        "server.app.main",
     ]
     reloaded = {}
     for module_name in modules_to_reload:
         sys.modules.pop(module_name, None)
         reloaded[module_name] = importlib.import_module(module_name)
 
-    from ota_server.app import main as app_main
+    from server.app import main as app_main
 
     class DummyScheduler:
         def start(self):
@@ -105,8 +105,8 @@ def test_check_update_no_rollout(test_client):
     assert payload["update_available"] is False
     assert payload["manifest"] is None
 
-    from ota_server.app import models
-    from ota_server.app.database import session_scope
+    from server.app import models
+    from server.app.database import session_scope
 
     with session_scope() as session:
         device = session.execute(
@@ -118,9 +118,9 @@ def test_check_update_no_rollout(test_client):
 
 def test_check_update_with_rollout_and_report(test_client, tmp_path):
     client, app_main = test_client
-    from ota_server.app import crud, models
-    from ota_server.app.database import session_scope
-    from ota_server.app.storage import store_firmware_file
+    from server.app import crud, models
+    from server.app.database import session_scope
+    from server.app.storage import store_firmware_file
 
     firmware_path = tmp_path / "firmware.bin"
     firmware_path.write_bytes(b"test-binary")
@@ -182,7 +182,7 @@ def test_check_update_with_rollout_and_report(test_client, tmp_path):
     )
     assert report.status_code == 200
 
-    from ota_server.app.database import session_scope as scope2
+    from server.app.database import session_scope as scope2
     with scope2() as session:
         device = session.execute(
             select(models.Device).where(models.Device.mac == "aabbccddee11")
