@@ -75,7 +75,7 @@ python server/tools/fake_device.py --base-url https://localhost:8443 \
 
 Run the automated test suite from the repository root (with the virtual environment active):
 ```bash
-pytest server/tests
+python -m pytest server/tests
 ```
 
 The tests exercise the check-update and report-status endpoints, verifying that firmware manifests and download logs are persisted correctly.
