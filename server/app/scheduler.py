@@ -28,11 +28,15 @@ class RolloutScheduler:
             self.scheduler.start()
             self.refresh_jobs()
             logger.info("Rollout scheduler started")
+        else:
+            logger.debug("Rollout scheduler already running; start skipped")
 
     def shutdown(self) -> None:
         if self.scheduler.running:
             self.scheduler.shutdown(wait=False)
             logger.info("Rollout scheduler stopped")
+        else:
+            logger.debug("Rollout scheduler already stopped; shutdown skipped")
 
     def refresh_jobs(self, *, apply_jobs: bool = True) -> None:
         config_path = Path(self.config.scheduler.schedules_file).resolve()
@@ -42,6 +46,7 @@ class RolloutScheduler:
         with config_path.open("r", encoding="utf-8") as fh:
             data = yaml.safe_load(fh) or {}
         schedules: list[dict[str, Any]] = data.get("schedules", [])
+        logger.debug("Loaded %d schedule definitions (apply_jobs=%s)", len(schedules), apply_jobs)
         known_job_ids = {job.id for job in self.scheduler.get_jobs()} if apply_jobs else set()
         desired_job_ids: set[str] = set()
 
@@ -56,6 +61,8 @@ class RolloutScheduler:
                     continue
                 if apply_jobs:
                     desired_job_ids.add(name)
+                else:
+                    logger.debug("Dry-run refresh for schedule '%s'", name)
                 rollout = self._get_rollout_by_name(session, rollout_name)
                 if not rollout:
                     logger.warning("Rollout '%s' referenced by schedule '%s' not found", rollout_name, name)
@@ -88,6 +95,7 @@ class RolloutScheduler:
                             pass
                         else:
                             logger.info("Removed disabled schedule '%s'", name)
+                    logger.debug("Schedule '%s' is disabled; job not registered", name)
             session.commit()
 
         # prune orphaned jobs not present anymore
@@ -98,6 +106,8 @@ class RolloutScheduler:
                 except Exception:  # pragma: no cover
                     continue
                 logger.info("Removed stale schedule job '%s'", job_id)
+            if not desired_job_ids:
+                logger.debug("No schedules requested; all existing jobs considered stale")
 
     @staticmethod
     def _get_rollout_by_name(session: Session, name: str) -> models.Rollout | None:

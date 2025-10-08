@@ -8,14 +8,60 @@ This directory contains the Python OTA backend, management utilities, simulator 
    ```bash
    python -m venv .venv
    source .venv/bin/activate
-   pip install -r ota_server/requirements.txt
+   pip install -r server/requirements.txt
    ```
 2. **Generate a self-signed certificate**
    ```bash
    cd server
    ./scripts/generate_cert.sh certs
    ```
-   The generated certificate includes subject alternative names for `localhost` and `127.0.0.1` so simulators and browsers accept it without hostname warnings.
+   The generated certificate includes subject alternative names for `otaserver.local` so simulators and browsers accept it without hostname warnings. But this need mDNS service enabled on host by following steps:  
+   **On Linux host**
+   - mDNS install
+   ```bash
+   sudo apt-get install -y avahi-daemon avahi-utils
+   ```
+   - `/etc/avahi/avahi-daemon.conf` の `host-name=` を `otaserver` に（`.local` は自動付与）。
+   例: `host-name=otaserver`
+   - 8443 の HTTPS サービスを広告するXMLを作成：
+   `/etc/avahi/services/https-8443.service`
+   ```xml
+   <?xml version="1.0" standalone='no'?><!-- -*-nxml-*- -->
+   <!DOCTYPE service-group SYSTEM "avahi-service.dtd">
+   <service-group>
+   <name replace-wildcards="yes">OTA Server</name>
+   <service>
+      <type>_https._tcp</type>
+      <port>8443</port>
+      <!-- 任意でパス等のTXTも追加可 -->
+   </service>
+   </service-group>
+   ```
+   - 再起動
+   ```bash
+   sudo systemctl restart avahi-daemon
+   ```
+   - 動作確認
+   ```bash
+   avahi-browse -rat | grep _https._tcp
+   ping otaserver.local
+   ```
+   > 注意：ファイアウォールで UDP/5353 (mDNS) を許可してください。
+
+   **On macOS host**
+   - mDNS(Bonjour)の設定
+   macOSは Bonjour（mDNSResponder）標準搭載のため、追加インストール不要です。
+   ただし、標準のBonjourではコンピュータ名＝mDNSホスト名になるため、追加でAvahi的な広告設定（DNS-SDの手動登録）を行う必要があります。
+   - `dns-sd`でAレコードを明示的に登録する
+   ```bash
+   MY_IP=$(ipconfig getifaddr en0)  # 有線LANならen0、Wi-Fiならen1など適宜
+   dns-sd -P otaserver _https._tcp local 8443 otaserver.local $MY_IP
+   ```
+   > 注意: dns-sd -P はプロセスが動作中のみ有効（プロセス終了で広告停止）。永続化するには launchd スクリプト化する方法を検討して下さい。
+   - 動作確認
+   ```bash
+   ping otaserver.local
+   ```
 3. **Initialise the database**
    ```bash
    python manage.py initdb
@@ -66,7 +112,7 @@ Runtime settings live in `server/config/server.yml`. Update the API token, certi
 
 Use the fake device to verify the OTA workflow without hardware:
 ```bash
-python server/tools/fake_device.py --base-url https://localhost:8443 \
+python server/tools/fake_device.py --base-url https://otaserver.local:8443 \
     --mac aa:bb:cc:dd:ee:ff --version 0.9.0 --labels pilot \
     --token <API_TOKEN> --cert server/certs/server.crt
 ```

@@ -73,6 +73,12 @@ def check_update(
         logger.debug("No update available for device %s", payload.mac)
         return CheckUpdateResponse(update_available=False, manifest=None, poll_interval_minutes=poll_interval)
 
+    logger.debug(
+        "Preparing manifest for device %s with firmware %s (rollout=%s)",
+        payload.mac,
+        firmware.version,
+        rollout.name if rollout else "n/a",
+    )
     manifest = build_manifest(request, firmware)
     crud.record_download(session, device=device, firmware=firmware, status=models.DownloadStatus.downloading)
     logger.info("Offering firmware %s to device %s (rollout=%s)", firmware.version, payload.mac, rollout.name if rollout else "n/a")
@@ -90,9 +96,11 @@ def download_firmware(
         select(models.Firmware).where(models.Firmware.version == version)
     ).scalar_one_or_none()
     if not firmware:
+        logger.debug("Firmware version %s requested but not found in database", version)
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Firmware not found")
     file_path = Path(firmware.file_path).resolve()
     if not file_path.exists():
+        logger.debug("Firmware file missing on disk for version %s at %s", version, file_path)
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Firmware file missing")
     return FileResponse(
         path=file_path,
@@ -111,16 +119,30 @@ def report_status(
         select(models.Device).where(models.Device.mac == payload.mac)
     ).scalar_one_or_none()
     if not device:
+        logger.debug("Device %s attempted to report status but is not registered", payload.mac)
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Device not registered")
     firmware = crud.get_firmware_by_version(session, payload.firmware_version)
     if not firmware:
+        logger.debug(
+            "Device %s reported status for unknown firmware %s",
+            payload.mac,
+            payload.firmware_version,
+        )
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Firmware not tracked")
 
     status_value = models.DownloadStatus.success if payload.status == "success" else models.DownloadStatus.failed
+    if status_value == models.DownloadStatus.failed and payload.error:
+        logger.debug(
+            "Device %s reported failure for firmware %s (error=%s)",
+            payload.mac,
+            payload.firmware_version,
+            payload.error,
+        )
     crud.record_download(session, device=device, firmware=firmware, status=status_value, error=payload.error)
 
     if status_value == models.DownloadStatus.success:
         device.current_version = payload.firmware_version
+        logger.debug("Updated device %s current version to %s", payload.mac, payload.firmware_version)
     device.last_seen = datetime.utcnow()
     session.commit()
     logger.info("Device %s reported %s for firmware %s", payload.mac, payload.status, payload.firmware_version)

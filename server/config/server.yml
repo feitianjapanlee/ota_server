@@ -14,4 +14,4 @@ scheduler:
 database:
   url: "sqlite:///./ota.db"
 logging:
-  level: "INFO"
+  level: "DEBUG"
