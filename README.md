@@ -21,31 +21,37 @@ This directory contains the Python OTA backend, management utilities, simulator 
    ```bash
    sudo apt-get install -y avahi-daemon avahi-utils
    ```
-   - `/etc/avahi/avahi-daemon.conf` の `host-name=` を `otaserver` に（`.local` は自動付与）。
-   例: `host-name=otaserver`
-   - 8443 の HTTPS サービスを広告するXMLを作成：
-   `/etc/avahi/services/https-8443.service`
-   ```xml
-   <?xml version="1.0" standalone='no'?><!-- -*-nxml-*- -->
-   <!DOCTYPE service-group SYSTEM "avahi-service.dtd">
-   <service-group>
-   <name replace-wildcards="yes">OTA Server</name>
-   <service>
-      <type>_https._tcp</type>
-      <port>8443</port>
-      <!-- 任意でパス等のTXTも追加可 -->
-   </service>
-   </service-group>
-   ```
-   - 再起動
+   - 現在のホスト名とは別にホスト名を付けたい場合
    ```bash
-   sudo systemctl restart avahi-daemon
+   
+   MY_IP=$(ip -4 addr show dev enp4s0 | awk '/inet /{print $2}' | cut -d/ -f1)
+   avahi-publish -a -R otaserver.local $MY_IP
    ```
-   - 動作確認
-   ```bash
-   avahi-browse -rat | grep _https._tcp
-   ping otaserver.local
-   ```
+   - 現在のホスト名を設定したい場合
+     - `/etc/avahi/avahi-daemon.conf` の `host-name=` を `otaserver` に（`.local` は自動付与）。例: `host-name=otaserver`
+       - 8443 の HTTPS サービスを広告するXMLを作成：
+       `/etc/avahi/services/https-8443.service`
+       ```xml
+       <?xml version="1.0" standalone='no'?><!-- -*-nxml-*- -->
+       <!DOCTYPE service-group SYSTEM "avahi-service.dtd">
+       <service-group>
+       <name replace-wildcards="yes">OTA Server</name>
+       <service>
+          <type>_https._tcp</type>
+          <port>8443</port>
+          <!-- 任意でパス等のTXTも追加可 -->
+       </service>
+       </service-group>
+       ```
+       - 再起動
+       ```bash
+       sudo systemctl restart avahi-daemon
+       ```
+       - 動作確認
+       ```bash
+       avahi-browse -rat | grep _https._tcp
+       ping otaserver.local
+       ```
    > 注意：ファイアウォールで UDP/5353 (mDNS) を許可してください。
 
    **On macOS host**
