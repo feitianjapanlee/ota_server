@@ -136,6 +136,22 @@ The tests exercise the check-update and report-status endpoints, verifying that 
 
 The Arduino sketch in `firmware/esp32_ota_client.ino` implements the polling, download, verification, and rollback logic for ESP32 devices. Replace the Wi-Fi credentials, OTA token, and embedded certificate, then flash it with the Arduino IDE or `arduino-cli`.
 
+### arduino-cli install
+Install arduino-cli without IDE on Ubuntu 24.04:
+```bash
+curl -FsSL ...
+```
+Add necessary board library and other include/library to arduino-cli environment:
+```bash
+arduino-cli core ...
+arduino-cli lib search "ArduinoJson"
+```
+
+### arduino-cli compile
+```bash
+arduino-cli compile ...
+```
+
 ## Next Steps
 
 - Integrate with your continuous delivery pipeline to push signed binaries into `server/firmware_store`.
