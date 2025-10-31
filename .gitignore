@@ -34,8 +34,7 @@ ENV/
 
 # Project specific
 ota_server/config.ini
-ota_server/logs/
-ota_server/*.log
+logs/
 uploads/
 downloads/
 *.db

@@ -5,6 +5,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import Annotated
 
+from logging.config import dictConfig
+
 from fastapi import Depends, FastAPI, HTTPException, Request, Response, status
 from fastapi.responses import FileResponse
 from sqlalchemy import select
@@ -23,12 +25,70 @@ logger = logging.getLogger(__name__)
 
 app = FastAPI(title="ESP32 OTA Server", version="1.0")
 _config = get_config()
+
+
+def _resolve_log_level(level: str) -> int:
+    mapping = {
+        "CRITICAL": logging.CRITICAL,
+        "ERROR": logging.ERROR,
+        "WARNING": logging.WARNING,
+        "INFO": logging.INFO,
+        "DEBUG": logging.DEBUG,
+        "NOTSET": logging.NOTSET,
+    }
+    return mapping.get(level.upper(), logging.INFO)
+
+
+def _configure_logging(level: str) -> None:
+    resolved_level = _resolve_log_level(level)
+    dictConfig(
+        {
+            "version": 1,
+            "disable_existing_loggers": False,
+            "formatters": {
+                "standard": {
+                    "format": "%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+                    "datefmt": "%Y-%m-%d %H:%M:%S",
+                },
+            },
+            "handlers": {
+                "console": {
+                    "class": "logging.StreamHandler",
+                    "formatter": "standard",
+                    "stream": "ext://sys.stdout",
+                },
+            },
+            "loggers": {
+                "uvicorn": {
+                    "handlers": ["console"],
+                    "level": resolved_level,
+                    "propagate": False,
+                },
+                "uvicorn.error": {
+                    "handlers": ["console"],
+                    "level": resolved_level,
+                    "propagate": False,
+                },
+                "uvicorn.access": {
+                    "handlers": ["console"],
+                    "level": logging.INFO,
+                    "propagate": False,
+                },
+            },
+            "root": {
+                "handlers": ["console"],
+                "level": resolved_level,
+            },
+        }
+    )
+
+
+_configure_logging(_config.logging.level)
 _scheduler = RolloutScheduler()
 
 
 @app.on_event("startup")
 async def on_startup() -> None:
-    logging.basicConfig(level=_config.logging.level)
     ensure_storage_root()
     init_db()
     _scheduler.start()
