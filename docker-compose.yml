@@ -11,5 +11,6 @@ services:
       - ./server/config:/app/server/config:ro
       - ./server/certs:/app/server/certs:ro
       - ./server/firmware_store:/app/server/firmware_store
+      - ./server/logs:/app/server/logs
       - ./server/ota.db:/app/server/ota.db
     restart: unless-stopped
