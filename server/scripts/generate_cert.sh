@@ -12,7 +12,7 @@ if command -v openssl >/dev/null 2>&1; then
 
   cat >"$TMP_CFG" <<'EOF'
 [ req ]
-default_bits        = 4096
+default_bits        = 2048
 prompt              = no
 default_md          = sha256
 distinguished_name  = dn
@@ -34,7 +34,7 @@ DNS.1 = otaserver.local
 EOF
 
   openssl req -x509 -nodes -days 365 \
-    -newkey rsa:4096 \
+    -newkey rsa:2048 \
     -keyout "$KEY_FILE" \
     -out "$CERT_FILE" \
     -config "$TMP_CFG"
