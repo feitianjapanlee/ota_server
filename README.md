@@ -139,17 +139,30 @@ The Arduino sketch in `firmware/esp32_ota_client.ino` implements the polling, do
 ### arduino-cli install
 Install arduino-cli without IDE on Ubuntu 24.04:
 ```bash
-curl -FsSL ...
+curl -fsSL https://raw.githubusercontent.com/arduino/arduino-cli/master/install.sh | sh
 ```
+This script will install the latest version of Arduino CLI to $PWD/bin. Please add this path to your PATH environment variable.
+
 Add necessary board library and other include/library to arduino-cli environment:
 ```bash
-arduino-cli core ...
-arduino-cli lib search "ArduinoJson"
+arduino-cli core update-index --additional-urls https://raw.githubusercontent.com/espressif/arduino-esp32/gh-pages/package_esp32_index.json
+arduino-cli core update-index
+arduino-cli core install esp32:esp32
+arduino-cli board listall esp32:esp32
+# Comfirm that "XIAO_ESP32S3 esp32:esp32:XIAO_ESP32S3" is in the outputs. 
+
+# Install ArduinoJson since we include ArduinoJson.h in our code.
+arduino-cli lib install ArduinoJson
 ```
 
 ### arduino-cli compile
 ```bash
-arduino-cli compile ...
+arduino-cli compile --fqbn "esp32:esp32:XIAO_ESP32S3:PSRAM=opi" --output-dir "firmware/build/" "firmware/esp32_ota_client"
+```
+### arduino-cli upload
+Write `bin` file to device:
+```bash
+arduino-cli upload -p /dev/ttyACM0 --fqbn esp32:esp32:XIAO_ESP32S3 firmware/build/esp32_ota_client.ino.bin
 ```
 
 ## Next Steps
