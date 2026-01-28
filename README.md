@@ -76,9 +76,19 @@ This directory contains the Python OTA backend, management utilities, simulator 
    ```bash
    python manage.py firmware-upload firmware/app.bin --version 1.0.0 --channel pilot --notes "Pilot build" --pilot-ready
    ```
+   Example:
+   ```bash
+   (.venv) lee@rocky8:~/workspace/ota_server/server$ python manage.py firmware-upload ../../keihin-prototype-sam/client-esp32s3sense/build/esp32.esp32.XIAO_ESP32S3/client-esp32s3sense_0.0.68.bin --version 0.0.68 --channel pilot --notes "FQDN" --pilot-ready
+   Registered firmware 0.0.68 (sha256=a0f5508ec66ad4bb5647408b82ff474f1c1f4b194a4f7e42b93cad8fe4656862)
+   ```
 5. **Create a pilot rollout**
    ```bash
    python manage.py rollout-create pilot-rollout --firmware 1.0.0 --label pilot --stage pilot --activate
+   ```
+   Example:
+   ```bash
+   (.venv) lee@rocky8:~/workspace/ota_server/server$ python manage.py rollout-create "rollout-0.0.68" --firmware 0.0.68 --label pilot --activate
+   Rollout 'rollout-0.0.68' created for firmware 0.0.68
    ```
 6. **Run the server with HTTPS**
    ```bash
