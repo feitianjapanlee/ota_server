@@ -60,11 +60,57 @@ def _default_config_path() -> Path:
     return Path(__file__).resolve().parent.parent / "config" / "server.yml"
 
 
+def _config_base_dir(config_path: Path) -> Path:
+    parent = config_path.parent
+    if parent.name == "config":
+        return parent.parent.resolve()
+    return parent.resolve()
+
+
+def _resolve_path(value: str, *, base_dir: Path) -> str:
+    path = Path(value).expanduser()
+    if path.is_absolute():
+        return str(path.resolve())
+    return str((base_dir / path).resolve())
+
+
+def _resolve_sqlite_url(url: str, *, base_dir: Path) -> str:
+    prefix = "sqlite:///"
+    if not url.startswith(prefix) or url.startswith("sqlite:////"):
+        return url
+
+    path_part, separator, suffix = url[len(prefix):].partition("?")
+    if not path_part or path_part == ":memory:":
+        return url
+
+    resolved_path = Path(path_part).expanduser()
+    if not resolved_path.is_absolute():
+        resolved_path = (base_dir / resolved_path).resolve()
+    else:
+        resolved_path = resolved_path.resolve()
+
+    normalized = f"{prefix}{resolved_path}"
+    if separator:
+        normalized = f"{normalized}?{suffix}"
+    return normalized
+
+
+def _normalize_paths(config: AppConfig, *, config_path: Path) -> AppConfig:
+    base_dir = _config_base_dir(config_path)
+    config.server.cert_file = _resolve_path(config.server.cert_file, base_dir=base_dir)
+    config.server.key_file = _resolve_path(config.server.key_file, base_dir=base_dir)
+    config.server.storage_root = _resolve_path(config.server.storage_root, base_dir=base_dir)
+    config.scheduler.schedules_file = _resolve_path(config.scheduler.schedules_file, base_dir=base_dir)
+    config.database.url = _resolve_sqlite_url(config.database.url, base_dir=base_dir)
+    return config
+
+
 def load_config(path: Optional[Path] = None) -> AppConfig:
     config_path = path or _default_config_path()
     with open(config_path, "r", encoding="utf-8") as fh:
         raw = yaml.safe_load(fh)
-    return AppConfig.model_validate(raw)
+    config = AppConfig.model_validate(raw)
+    return _normalize_paths(config, config_path=config_path)
 
 
 @lru_cache(maxsize=1)
