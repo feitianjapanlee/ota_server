@@ -194,3 +194,61 @@ def test_check_update_with_rollout_and_report(test_client, tmp_path):
         statuses = [entry.status.value for entry in logs]
         assert "downloading" in statuses
         assert "success" in statuses
+
+
+def test_check_update_uses_forwarded_https_in_manifest(test_client, tmp_path):
+    client, app_main = test_client
+    from server.app import crud, models
+    from server.app.database import session_scope
+    from server.app.storage import store_firmware_file
+
+    firmware_path = tmp_path / "firmware.bin"
+    firmware_path.write_bytes(b"forwarded-test-binary")
+
+    stored_path, size_bytes, sha256 = store_firmware_file(firmware_path, "1.0.1")
+
+    with session_scope() as session:
+        firmware = crud.create_firmware(
+            session,
+            version="1.0.1",
+            channel="pilot",
+            file_path=str(stored_path),
+            size_bytes=size_bytes,
+            sha256=sha256,
+            release_notes="Forwarded URL test",
+            pilot_ready=True,
+        )
+        label = session.execute(
+            select(models.Label).where(models.Label.name == "pilot")
+        ).scalar_one_or_none()
+        if not label:
+            label = models.Label(name="pilot")
+            session.add(label)
+            session.flush()
+        rollout = crud.create_rollout(
+            session,
+            name="forwarded-rollout",
+            firmware=firmware,
+            target_label=label,
+            stage=models.RolloutStage.pilot,
+            status=models.RolloutStatus.active,
+        )
+        crud.set_rollout_status(session, rollout, status=models.RolloutStatus.active, is_active=True)
+
+    response = client.post(
+        "/api/v1/check-update",
+        headers={
+            "X-OTA-Token": "test-token",
+            "Host": "pms-ota.rakuxio.com",
+            "X-Forwarded-Proto": "https",
+        },
+        json={
+            "mac": "aa:bb:cc:dd:ee:22",
+            "current_version": "1.0.0",
+            "labels": ["pilot"],
+        },
+    )
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["update_available"] is True
+    assert payload["manifest"]["url"] == "https://pms-ota.rakuxio.com/firmware/1.0.1/image.bin"
